@@ -14,7 +14,7 @@ class EventController extends Controller
      */
     public function index()
     {
-        return EventResource::collection(Event::with('user')->get());
+        return EventResource::collection(Event::with('user')->paginate());
     }
 
     /**
@@ -22,6 +22,10 @@ class EventController extends Controller
      */
     public function store(Request $request)
     {
+        // important !!!
+        // Every attribute used inside the create method must 
+        // be present in the $fillable property of the model
+
         $event = Event::create([
             ...$request->validate([
                 'name' => 'required|string|max:255',
