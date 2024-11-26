@@ -11,6 +11,7 @@ class Event extends Model
 {
     use HasFactory;
 
+    // Define quais campos do modelo podem ser preenchidos massivamente
     protected $fillable = [
         'name',
         'description',
