@@ -3,17 +3,24 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\EventResource;
 use App\Http\Traits\CanLoadRelationships;
 use App\Models\Event;
 use Illuminate\Http\Request;
-use App\Http\Resources\EventResource;
+use Illuminate\Support\Facades\Gate;
 
 class EventController extends Controller
 {
     use CanLoadRelationships;
 
-    // Relations that can be loaded with url parameters
-    private array $relations = ['user','attendees','attendees.user'];
+    private array $relations = ['user', 'attendees', 'attendees.user'];
+
+    public function __construct()
+    {
+        $this->middleware('auth:sanctum')->except(['index', 'show']);
+        $this->authorizeResource(Event::class, 'event');
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -31,18 +38,14 @@ class EventController extends Controller
      */
     public function store(Request $request)
     {
-        // important !!!
-        // Every attribute used inside the create method must
-        // be present in the $fillable property of the model
-
         $event = Event::create([
             ...$request->validate([
                 'name' => 'required|string|max:255',
-                'description' => 'required|string',
+                'description' => 'nullable|string',
                 'start_time' => 'required|date',
                 'end_time' => 'required|date|after:start_time'
             ]),
-            'user_id' => 1
+            'user_id' => $request->user()->id
         ]);
 
         return new EventResource($this->loadRelationships($event));
@@ -53,20 +56,28 @@ class EventController extends Controller
      */
     public function show(Event $event)
     {
-        return new EventResource($this->loadRelationships($event));
+        return new EventResource(
+            $this->loadRelationships($event)
+        );
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request,Event $event)
+    public function update(Request $request, Event $event)
     {
-        $event->update($request->validate([
+        // if (Gate::denies('update-event', $event)) {
+        //     abort(403, 'You are not authorized to update this event.');
+        // }
+        // $this->authorize('update-event', $event);
+        $event->update(
+            $request->validate([
                 'name' => 'sometimes|string|max:255',
-                'description' => 'sometimes|string',
+                'description' => 'nullable|string',
                 'start_time' => 'sometimes|date',
                 'end_time' => 'sometimes|date|after:start_time'
-        ]));
+            ])
+        );
 
         return new EventResource($this->loadRelationships($event));
     }
@@ -77,10 +88,6 @@ class EventController extends Controller
     public function destroy(Event $event)
     {
         $event->delete();
-
-        // return response()->json([
-        //     'message' => 'Event deleted successfully'
-        // ]);
 
         return response(status: 204);
     }
